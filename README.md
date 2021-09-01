@@ -9,23 +9,23 @@ This project starts off as a code refactoring practice based on a command-line s
 
 Everything is done through the class StockVCPScreener. To initate:
 ```
-    svs = StockVCPScreener(selected_date[datetime.date], stock_list[list])
+svs = StockVCPScreener(selected_date[datetime.date], stock_list[list])
 ```
 
 To check the output directory and directories containing the stock data
 ```
-   	svs.check_directory()
-    svs.check_index_database()
-    svs.check_stock_database('yfinance')
+svs.check_directory()
+svs.check_index_database()
+svs.check_stock_database('yfinance')
 ```
 
 To run the stock selection:
 ```
-	svs.select_stock()
+svs.select_stock()
 ```
 
 To generate a report and csv files necessary for the Dash app:
 ```
-    svs.generate_report()
-    svs.generate_dash_csv()
+svs.generate_report()
+svs.generate_dash_csv()
 ```
