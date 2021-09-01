@@ -12,7 +12,12 @@ Everything is done through the StockVCPScreener class. To initate:
 svs = StockVCPScreener(selected_date[datetime.date], stock_list[list])
 ```
 
-To check the output directory and directories containing the stock data
+To download the stock data to the directory (currently support yahoo finance or stooq):
+```
+svs.check_stock_database('yfinance', create=True)
+```
+
+To check the output directory and update the directories containing the stock data
 ```
 svs.check_directory()
 svs.check_index_database()

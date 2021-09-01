@@ -1,0 +1,12 @@
+mplfinance==0.12.7a17
+yfinance==0.1.63
+seaborn==0.11.1
+img2pdf==0.4.1
+pandas==1.0.3
+matplotlib==3.2.1
+numpy==1.19.5
+requests==2.24.0
+pandas_datareader==0.9.0
+fpdf==1.7.2
+Pillow==8.3.1
+PyPDF2==1.26.0
