@@ -24,8 +24,16 @@ To run the stock selection:
 svs.select_stock()
 ```
 
-To generate a report and csv files necessary for the Dash app:
+To generate a report and the csv files necessary for the Dash app:
 ```
 svs.generate_report()
 svs.generate_dash_csv()
 ```
+
+## Visualization
+
+The Dash app can be accessed at the link below:
+
+[Coming soon](http://commingsoon.com)
+
+
