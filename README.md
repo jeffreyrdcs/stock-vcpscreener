@@ -42,3 +42,10 @@ The Dash app can be accessed at the link below:
 [Coming soon](http://jeffreyccchan.com/)
 
 
+## To-do
+
+* Complete the test cases
+* Add a method to validate and fix the database directories
+
+
+
