@@ -39,7 +39,8 @@ svs.generate_dash_csv()
 
 The Dash app can be accessed at the link below:
 
-[Coming soon](http://jeffreyccchan.com/)
+https://stock-vcp-dash.herokuapp.com/
+https://jeffreyrdcs.pythonanywhere.com
 
 
 ## To-do
