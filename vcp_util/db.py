@@ -215,7 +215,7 @@ def create_stock_database(stock_list, csvdir_name, source):
 
     # When done, update the last update csv file to current time (UTC-5)
     lastupdate['Date'] = (datetime.utcnow() - timedelta(hours=5)).date()
-    lastupdate.to_csv(csvdir_name+"last_update.dat", mode='w')
+    lastupdate.to_csv(csvdir_name+"last_update.dat", mode='w',index=False)
 
 
 
@@ -283,11 +283,11 @@ def update_stock_database(stock_list, csvdir_name, source, trade_day, override=F
                     print(f"No update needed for {stock}")
 
                 # Wait a while to avoid data error which seems to be happening a lot for yfinance
-                time.sleep(0.1)
+                time.sleep(0.4)
 
         # When done, update the last update file to current time (UTC-5). Now trade_day instead
         lastupdate['Date'] = trade_day #(datetime.utcnow() - timedelta(hours=5)).date()
-        lastupdate.to_csv(csvdir_name+"last_update.dat", mode='w')
+        lastupdate.to_csv(csvdir_name+"last_update.dat", mode='w', index=False)
     else:
         print("No update needed for the database!")
 
