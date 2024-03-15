@@ -127,11 +127,13 @@ class StockVCPScreener:
         # Read in the database update date
         if os.path.exists(self.csvdatmain_name+"last_update.dat"):
             lastupdate = pd.read_csv(self.csvdatmain_name+"last_update.dat", header=0)
-            lastupdate['Date']=pd.to_datetime(lastupdate['Date'])
+            lastupdate['Date'] = pd.to_datetime(lastupdate['Date'])
             lastupdate_day = lastupdate['Date'][0]
+
             if (lastupdate_day.date() - self.date_study).days >= 0:
                 # Second check - check last day of the GSPC index dataset
                 index_lastupdate_day = get_index_lastday(self.csvdatmain_name)
+
                 if (index_lastupdate_day.date() - self.date_study).days >= 0:
                     return 1
                 else:
