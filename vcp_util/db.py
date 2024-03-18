@@ -145,33 +145,33 @@ def get_stock_data_specific_date(data_dir_name, stock, in_date, minmax_range=Fal
     if not isinstance(in_date, date):
         in_date = convert_date_str_to_datetime(in_date)
 
-    if os.path.exists(data_dir_name + in_stock_filename):
-        df = pd.read_csv(data_dir_name + in_stock_filename, header=0)
-        df["Date"] = pd.to_datetime(df["Date"])
-        df["Date"] = df["Date"].dt.date
-        df.set_index("Date", inplace=True)
-
-        if in_date in df.index:
-            sel_df = df.loc[in_date]
-            sel_df["Ticker"] = stock.strip()
-
-            if percent_change:
-                tmp_df = df[df.index <= in_date]
-                sel_df["Change"] = tmp_df["Adj Close"].iloc[-1] - tmp_df["Adj Close"].iloc[-2]
-                sel_df["Change (%)"] = (tmp_df["Adj Close"].iloc[-1] - tmp_df["Adj Close"].iloc[-2]) / tmp_df[
-                    "Adj Close"
-                ].iloc[-2]
-
-            if minmax_range:
-                sel_df["52 Week Min"] = min(df["Adj Close"].loc[in_date - timedelta(days=365): in_date])
-                sel_df["52 Week Max"] = max(df["Adj Close"].loc[in_date - timedelta(days=365): in_date])
-
-            # sel_df = sel_df.drop("Date")
-        else:
-            print(f"Specified date not available in the data for stock {stock}")
-            return None
-    else:
+    if not os.path.exists(data_dir_name + in_stock_filename):
         print(f"Stock {stock} not available")
+        return None
+
+    df = pd.read_csv(data_dir_name + in_stock_filename, header=0)
+    df["Date"] = pd.to_datetime(df["Date"])
+    df["Date"] = df["Date"].dt.date
+    df.set_index("Date", inplace=True)
+
+    if in_date in df.index:
+        sel_df = df.loc[in_date]
+        sel_df["Ticker"] = stock.strip()
+
+        if percent_change:
+            tmp_df = df[df.index <= in_date]
+            sel_df["Change"] = tmp_df["Adj Close"].iloc[-1] - tmp_df["Adj Close"].iloc[-2]
+            sel_df["Change (%)"] = (tmp_df["Adj Close"].iloc[-1] - tmp_df["Adj Close"].iloc[-2]) / tmp_df[
+                "Adj Close"
+            ].iloc[-2]
+
+        if minmax_range:
+            sel_df["52 Week Min"] = min(df["Adj Close"].loc[in_date - timedelta(days=365): in_date])
+            sel_df["52 Week Max"] = max(df["Adj Close"].loc[in_date - timedelta(days=365): in_date])
+
+        # sel_df = sel_df.drop("Date")
+    else:
+        print(f"Specified date not available in the data for stock {stock}")
         return None
 
     return sel_df
