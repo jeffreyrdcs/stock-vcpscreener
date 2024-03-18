@@ -497,7 +497,7 @@ if __name__ == "__main__":
     stock_list = list(data.Symbol)
 
     # Get the last trade day (take yesterday) from current time
-    last_weekday = get_last_trade_day().date() - timedelta(days=3)
+    last_weekday = get_last_trade_day().date() - timedelta(days=1)
 
     # Initiate StockVCPScreener
     svs = StockVCPScreener(last_weekday, stock_list)
@@ -505,7 +505,7 @@ if __name__ == "__main__":
     # Checks
     svs.check_directory()
     svs.check_index_database()
-    svs.check_stock_database("yfinance")
+    svs.check_stock_database("yfinance", create=False, update=True)  # Use create=True flag to build stock files
 
     # Select Stock
     # normally with overwrite = False
