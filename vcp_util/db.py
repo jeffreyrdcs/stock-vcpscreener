@@ -15,7 +15,8 @@ from stock_vcpscreener.vcp_util.util import convert_date_str_to_datetime, get_la
 pd.options.mode.chained_assignment = None
 
 
-_GSPC_SP500_csv_filename = "GSPC_SP500.csv"
+_GSPC_SP500_CSV_FILENAME = "GSPC_SP500.csv"
+_LAST_UPDATE_DAT_FILENAME = "last_update.dat"
 
 
 def volume_check():
@@ -25,7 +26,7 @@ def volume_check():
     pass
 
 
-def create_index_database(index_dir_name, source, out_filename=_GSPC_SP500_csv_filename):
+def create_index_database(index_dir_name, source, out_filename=_GSPC_SP500_CSV_FILENAME):
     """Fetch S&P500 index and save result as a csv. _GSPC_SP500_csv_filename is the default filename."""
     trade_day = get_last_trade_day()
 
@@ -35,7 +36,7 @@ def create_index_database(index_dir_name, source, out_filename=_GSPC_SP500_csv_f
     end_date = trade_day.date() + timedelta(days=1)  # +1 to include the current day
 
     if not os.path.exists(index_dir_name + out_filename):
-        print(f"Fetching index data to {out_filename}")
+        print(f"Fetching index data to {out_filename} ...")
         try:
             if source == "yfinance":
                 yf.pdr_override()
@@ -52,7 +53,7 @@ def create_index_database(index_dir_name, source, out_filename=_GSPC_SP500_csv_f
         )
 
 
-def get_index_lastday(index_dir_name, index_filename=_GSPC_SP500_csv_filename):
+def get_index_lastday(index_dir_name, index_filename=_GSPC_SP500_CSV_FILENAME):
     """Return the most updated date of the index csv file"""
     if os.path.exists(index_dir_name + index_filename):
         index_df = pd.read_csv(index_dir_name + index_filename, header=0)
@@ -60,32 +61,20 @@ def get_index_lastday(index_dir_name, index_filename=_GSPC_SP500_csv_filename):
         index_df.set_index("Date", inplace=True)
         last_avail_date = index_df.index[-1]
     else:
-        last_avail_date = "N/A"
+        last_avail_date = None
 
     return last_avail_date
 
 
-def _get_sp500_index_ticker(source):
-    """Return the ticker for the S&P500 index"""
-    if source == "yfinance":
-        index = "^GSPC"
-    elif source == "stooq":
-        index = "^SPX"  # SPX and SPY represent options on the S&P 500 index
-    else:
-        raise Exception("Please select either yfinance or stooq.")
-
-    return index
-
-
-def update_index_database(index_dir_name, source, trade_day, index_filename=_GSPC_SP500_csv_filename):
+def update_index_database(index_dir_name, source, trade_day, index_filename=_GSPC_SP500_CSV_FILENAME):
     """Read in csv for the S&P500 index, check the last updated date and update accordingly"""
     index = _get_sp500_index_ticker(source)
 
     if os.path.exists(index_dir_name + index_filename):
-        indexdata = pd.read_csv(index_dir_name + index_filename, header=0)
-        indexdata["Date"] = pd.to_datetime(indexdata["Date"])
-        indexdata.set_index("Date", inplace=True)
-        last_avail_date = indexdata.index[-1]
+        index_df = pd.read_csv(index_dir_name + index_filename, header=0)
+        index_df["Date"] = pd.to_datetime(index_df["Date"])
+        index_df.set_index("Date", inplace=True)
+        last_avail_date = index_df.index[-1]
 
         if (trade_day - last_avail_date.date()).days > 0:
             print(f"Updating index data to {index_filename}")
@@ -105,44 +94,61 @@ def update_index_database(index_dir_name, source, trade_day, index_filename=_GSP
                         start=last_avail_date.date() - timedelta(days=15),
                         end=trade_day + timedelta(days=1),
                     )
-                indexdata = pd.concat([indexdata, df])
+                index_df = pd.concat([index_df, df])
 
                 # Check if the Volume column of the new data is identical to the one in the db
-                check = indexdata.groupby(indexdata.index)["Volume"].nunique().ne(1)
+                check = index_df.groupby(index_df.index)["Volume"].nunique().ne(1)
                 if sum(check) != 0:
                     # Now set everything to be the minimum of the duplicated
-                    indexdata["Volume"] = indexdata.groupby(indexdata.index)["Volume"].transform("min")
+                    index_df["Volume"] = index_df.groupby(index_df.index)["Volume"].transform("min")
 
-                indexdata = indexdata[~indexdata.index.duplicated(keep="first")]
-                indexdata = indexdata.sort_index()
-                indexdata.to_csv(index_dir_name + index_filename, mode="w")
+                index_df = index_df[~index_df.index.duplicated(keep="first")]
+                index_df = index_df.sort_index()
+                index_df.to_csv(index_dir_name + index_filename, mode="w")
 
-                # Determine if the data is not updated or not
-                updated_last_avail_date = indexdata.index[-1]
+                # Determine if the data is updated or not
+                updated_last_avail_date = index_df.index[-1]
                 if (trade_day - updated_last_avail_date.date()).days > 0:
+                    print(f"Last updated date of the index is {updated_last_avail_date}.")
                     print("Please wait until yahoo finance update today's data.")
                     sys.exit(0)
 
             except Exception as inst:
-                print(inst)
-                print("Update failed")
+                print(f"Error updating index database: {inst}")
         else:
             print(f"No update needed")
     else:
-        print("File not found!")
+        print("Index File not found!")
 
 
-def get_stock_data_specific_date(csvdir_name, stock, in_date, minmax_range=False, percent_change=False):
+def _get_sp500_index_ticker(source):
+    """Return the ticker for the S&P500 index"""
+    if source == "yfinance":
+        index = "^GSPC"
+    elif source == "stooq":
+        index = "^SPX"  # SPX and SPY represent options on the S&P 500 index
+    else:
+        raise Exception("Please select either yfinance or stooq.")
+
+    return index
+
+
+def get_stock_filename(stock):
+    """Return the filename of the stock data csv"""
+    return stock.strip().ljust(5, "_") + ".csv"
+
+
+def get_stock_data_specific_date(data_dir_name, stock, in_date, minmax_range=False, percent_change=False):
     """Return the OHLC df of a specific stock of a given date"""
-    infilename = stock.strip().ljust(5, "_") + ".csv"
+    in_stock_filename = get_stock_filename(stock)
 
     if not isinstance(in_date, date):
-        in_date = convert_strdate_datetime(in_date)
+        in_date = convert_date_str_to_datetime(in_date)
 
-    if os.path.exists(csvdir_name + infilename):
-        df = pd.read_csv(csvdir_name + infilename, header=0)
+    if os.path.exists(data_dir_name + in_stock_filename):
+        df = pd.read_csv(data_dir_name + in_stock_filename, header=0)
         df["Date"] = pd.to_datetime(df["Date"])
-        df["Dateonly"] = df["Date"].dt.date
+        df["Date"] = df["Date"].dt.date
         df.set_index("Date", inplace=True)
 
         if in_date in df.index:
@@ -150,113 +156,112 @@ def get_stock_data_specific_date(csvdir_name, stock, in_date, minmax_range=False
             sel_df["Ticker"] = stock.strip()
 
             if percent_change:
-                tmp_df = df[df["Dateonly"] <= in_date]
+                tmp_df = df[df.index <= in_date]
                 sel_df["Change"] = tmp_df["Adj Close"].iloc[-1] - tmp_df["Adj Close"].iloc[-2]
                 sel_df["Change (%)"] = (tmp_df["Adj Close"].iloc[-1] - tmp_df["Adj Close"].iloc[-2]) / tmp_df[
                     "Adj Close"
                 ].iloc[-2]
 
             if minmax_range:
-                sel_df["52 Week Min"] = min(df["Adj Close"].loc[in_date - timedelta(days=365) : in_date])
-                sel_df["52 Week Max"] = max(df["Adj Close"].loc[in_date - timedelta(days=365) : in_date])
+                sel_df["52 Week Min"] = min(df["Adj Close"].loc[in_date - timedelta(days=365): in_date])
+                sel_df["52 Week Max"] = max(df["Adj Close"].loc[in_date - timedelta(days=365): in_date])
 
-            sel_df = sel_df.drop("Dateonly")
+            # sel_df = sel_df.drop("Date")
         else:
-            print("Specified date not in the data")
-            return np.nan
+            print(f"Specified date not available in the data for stock {stock}")
+            return None
     else:
-        print("Stock not available")
-        return np.nan
+        print(f"Stock {stock} not available")
+        return None
 
     return sel_df
 
 
-def create_stock_database(stock_list, csvdir_name, source):
+def _get_last_update_date_df(data_dir_name, trade_day) -> pd.DataFrame:
+    # Read in the database update date
+    if os.path.exists(data_dir_name + _LAST_UPDATE_DAT_FILENAME):
+        last_update = pd.read_csv(data_dir_name + _LAST_UPDATE_DAT_FILENAME, header=0)
+        last_update["Date"] = pd.to_datetime(last_update["Date"])
+    else:
+        # If the last update file doesn't exist, create a last update df with the date of one year ago
+        last_update = pd.DataFrame([trade_day.date() - timedelta(days=365 + 7)], columns=["Date"])
+
+    return last_update
+
+
+def create_stock_database(stock_list, data_dir_name, source):
     """Download stock data and save them as csv"""
     trade_day = get_last_trade_day()
 
-    # Read in the database update date
-    if os.path.exists(csvdir_name + "last_update.dat"):
-        lastupdate = pd.read_csv(csvdir_name + "last_update.dat", header=0)
-        lastupdate["Date"] = pd.to_datetime(lastupdate["Date"])
-        lastupdate_day = lastupdate["Date"][0]
-    else:
-        lastupdate = pd.DataFrame([trade_day.date() - timedelta(days=365 + 7)], columns=["Date"])
-        lastupdate_day = lastupdate["Date"][0]
+    start_date = trade_day.date() - timedelta(days=365 + 7)  # One year + 7 days
+    end_date = trade_day.date() + timedelta(days=1)
 
-    # Read in the companylist.csv
-    # data = pd.read_csv("Tickers.csv", header=0)
-    # stock_list = list(data.Symbol)
+    last_update = _get_last_update_date_df(data_dir_name, trade_day)
 
     for stock in stock_list:
-        outfilename = stock.strip().ljust(5, "_") + ".csv"
-        start_date = trade_day.date() - timedelta(days=365 + 7)  # Do one years and 7 days
-        end_date = trade_day.date() + timedelta(days=1)
-        if not os.path.exists(csvdir_name + outfilename):
-            print(f"Downloading info on {stock} to {outfilename}")
-            try:
-                if source == "yfinance":
-                    yf.pdr_override()
-                    df = pdr.get_data_yahoo(stock, start=start_date, end=end_date)
-                elif source == "stooq":
-                    df = pdr.DataReader(stock.strip(), "stooq", start=start_date, end=end_date)
-                if df.empty:
-                    with open(csvdir_name + stock.strip().ljust(5, "_") + ".txt", "w") as out_file:
-                        out_file.write("Empty dataframe\n")
-                        out_file.write(f"Last try on {end_date}")
-                else:
-                    df.to_csv(csvdir_name + outfilename)
+        out_stock_filename = get_stock_filename(stock)
 
-            except Exception as inst:
-                print(inst)
-                with open(csvdir_name + stock.strip().ljust(5, "_") + ".txt", "w") as out_file:
-                    out_file.write(inst)
-                    out_file.write(f"Last try on {end_date}")
-        else:
-            print(f"File {outfilename} exists")
+        if os.path.exists(data_dir_name + out_stock_filename):
+            print(f"File {out_stock_filename} exists. Skipping ...")
+            continue
+
+        print(f"Fetching {stock} info to {out_stock_filename}")
+        try:
+            if source == "yfinance":
+                yf.pdr_override()
+                df = pdr.get_data_yahoo(stock, start=start_date, end=end_date)
+            elif source == "stooq":
+                df = pdr.DataReader(stock.strip(), "stooq", start=start_date, end=end_date)
+
+            if df.empty:
+                raise ValueError("Empty DataFrame retrieved.")
+
+            df.to_csv(data_dir_name + out_stock_filename)
+
+        except Exception as e:
+            error_file_name = data_dir_name + stock.strip().ljust(5, "_") + ".txt"
+            with open(error_file_name, "w") as out_file:
+                out_file.write(f"{e}\n")
+                out_file.write(f"Last try on {end_date}")
+            print(f"Error fetching data for {stock}: {e}")
 
     # When done, update the last update csv file to current time (UTC-5)
-    lastupdate["Date"] = (datetime.utcnow() - timedelta(hours=5)).date()
-    lastupdate.to_csv(csvdir_name + "last_update.dat", mode="w", index=False)
+    last_update["Date"] = (datetime.utcnow() - timedelta(hours=5)).date()
+    last_update.to_csv(data_dir_name + _LAST_UPDATE_DAT_FILENAME, mode="w", index=False)
 
 
-def update_stock_database(stock_list, csvdir_name, source, trade_day, override=False):
+def update_stock_database(stock_list, data_dir_name, source, trade_day, override=False):
     """Read in csv for each stock, check the last updated date and update accordingly"""
     # trade_day = get_last_trade_day().date()
 
     # Read in the database update date
-    lastupdate = pd.read_csv(csvdir_name + "last_update.dat", header=0)
-    lastupdate["Date"] = pd.to_datetime(lastupdate["Date"])
-    lastupdate_day = lastupdate["Date"][0]
+    last_update = pd.read_csv(data_dir_name + _LAST_UPDATE_DAT_FILENAME, header=0)
+    last_update["Date"] = pd.to_datetime(last_update["Date"])
+    last_update_day = last_update["Date"][0]
 
-    if (trade_day - lastupdate_day.date()).days > 0 or override:
-
-        # Read in the companylist.csv
-        # data = pd.read_csv("Tickers.csv", header=0)
-        # stock_list = list(data.Symbol)
-
+    if (trade_day - last_update_day.date()).days > 0 or override:
         for stock in stock_list:
 
+            # For testing
             # if stock[0:1] <'S':
             #     continue
 
-            infilename = stock.strip().ljust(5, "_") + ".csv"
+            in_stock_filename = get_stock_filename(stock)
 
-            if os.path.exists(csvdir_name + infilename):
-
-                stockdata = pd.read_csv(csvdir_name + infilename, header=0)
-                stockdata["Date"] = pd.to_datetime(stockdata["Date"])
-                stockdata.set_index("Date", inplace=True)
+            if os.path.exists(data_dir_name + in_stock_filename):
+                stock_data = pd.read_csv(data_dir_name + in_stock_filename, header=0)
+                stock_data["Date"] = pd.to_datetime(stock_data["Date"])
+                stock_data.set_index("Date", inplace=True)
 
                 # Check if the last line contains Nan:
-                if np.isnan(stockdata.iloc[-1]["Open"]) or np.isnan(stockdata.iloc[-1]["Volume"]):
-                    stockdata = stockdata[:-1]
+                if np.isnan(stock_data.iloc[-1]["Open"]) or np.isnan(stock_data.iloc[-1]["Volume"]):
+                    stock_data = stock_data[:-1]
 
-                last_avail_date = stockdata.index[-1]
+                last_avail_date = stock_data.index[-1]
 
                 if (trade_day - last_avail_date.date()).days > 0:
                     # print((trade_day.date() - last_avail_date.date()).days)
-                    print(f"Updating info on {stock} on {infilename}")
+                    print(f"Updating info on {stock} on {in_stock_filename}")
                     try:
                         if source == "yfinance":
                             yf.pdr_override()
@@ -264,7 +269,7 @@ def update_stock_database(stock_list, csvdir_name, source, trade_day, override=F
                                 stock,
                                 start=last_avail_date.date() - timedelta(days=15),
                                 end=trade_day + timedelta(days=1),
-                            )  #  pause=1 Get two weeks back
+                            )  #  pause=1  Get two weeks back
                         elif source == "stooq":
                             df = pdr.DataReader(
                                 stock.strip(),
@@ -272,21 +277,20 @@ def update_stock_database(stock_list, csvdir_name, source, trade_day, override=F
                                 start=last_avail_date.date() - timedelta(days=15),
                                 end=trade_day + timedelta(days=1),
                             )
-                        stockdata = pd.concat([stockdata, df])
+                        stock_data = pd.concat([stock_data, df])
 
                         # Check if the Volume column of the new data is identical to the one in the db
-                        check = stockdata.groupby(stockdata.index)["Volume"].nunique().ne(1)
+                        check = stock_data.groupby(stock_data.index)["Volume"].nunique().ne(1)
                         if sum(check) != 0:
                             # Now set everything to be the minimum of the duplicated
-                            stockdata["Volume"] = stockdata.groupby(stockdata.index)["Volume"].transform("min")
+                            stock_data["Volume"] = stock_data.groupby(stock_data.index)["Volume"].transform("min")
 
-                        stockdata = stockdata[~stockdata.index.duplicated(keep="first")]
-                        stockdata = stockdata.sort_index()
-                        stockdata.to_csv(csvdir_name + infilename, mode="w")
+                        stock_data = stock_data[~stock_data.index.duplicated(keep="first")]
+                        stock_data = stock_data.sort_index()
+                        stock_data.to_csv(data_dir_name + in_stock_filename, mode="w")
 
-                    except Exception as inst:
-                        print(inst)
-                        print("Update failed")
+                    except Exception as e:
+                        print(f"Error updating data for {stock}: {e}")
                 else:
                     print(f"No update needed for {stock}")
 
@@ -294,7 +298,7 @@ def update_stock_database(stock_list, csvdir_name, source, trade_day, override=F
                 time.sleep(0.4)
 
         # When done, update the last update file to current time (UTC-5). Now using trade_day instead
-        lastupdate["Date"] = trade_day  # (datetime.utcnow() - timedelta(hours=5)).date()
-        lastupdate.to_csv(csvdir_name + "last_update.dat", mode="w", index=False)
+        last_update["Date"] = trade_day  # (datetime.utcnow() - timedelta(hours=5)).date()
+        last_update.to_csv(data_dir_name + _LAST_UPDATE_DAT_FILENAME, mode="w", index=False)
     else:
         print("No update needed for the database!")
