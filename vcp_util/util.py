@@ -174,13 +174,13 @@ def generate_combined_pdf_report(input_dir, output_dir, daily_file_name):
 
     comb.write(output_pdf)
 
-    os.remove(front_page)
-    os.remove(breadth_page)
-    os.remove(output_page)
-
     f_file.close()
     o_file.close()
     b_file.close()
+
+    os.remove(front_page)
+    os.remove(breadth_page)
+    os.remove(output_page)
 
 
 def convert_report_dict_to_df(in_dict):
