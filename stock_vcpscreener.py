@@ -133,7 +133,7 @@ class StockVCPScreener:
             print("Updating Index CSV data")
             update_index_database(self.csvdatmain_name, self.source, self._date_to_study)
 
-    def check_stock_database(self, source, create=False, update=True):
+    def check_stock_database(self, source: str, create=False, update=True):
         """Check if the stock database exist. Create / Update the database"""
         if source == "yfinance":
             data_dir = self.csvdatmain_name
