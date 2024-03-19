@@ -85,7 +85,6 @@ def update_index_database(index_dir_name, source, trade_day, index_filename=_GSP
                         index,
                         start=last_avail_date.date() - timedelta(days=15),
                         end=trade_day + timedelta(days=1),
-                        pause=1,
                     )  # Get two weeks back
                 elif source == "stooq":
                     df = pdr.DataReader(

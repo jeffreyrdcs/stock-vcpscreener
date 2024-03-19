@@ -2,7 +2,6 @@
 # from pandas_datareader import data as pdr
 import os
 import sys
-import time
 from datetime import date, timedelta
 
 import matplotlib
