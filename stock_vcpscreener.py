@@ -18,7 +18,7 @@ from stock_vcpscreener.vcp_util.db import (
     update_index_database,
     update_stock_database,
 )
-from stock_vcpscreener.vcp_util.stat import compute_rs_rank, get_rs_rank_sorted_df
+from stock_vcpscreener.vcp_util.stat import compute_rs_rating, get_rs_rank_sorted_df
 from stock_vcpscreener.vcp_util.util import (
     cleanup_dir_jpg_png,
     convert_png_to_jpg,
