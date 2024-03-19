@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# from pandas_datareader import data as pdr
 import os
 import sys
 from datetime import date, timedelta
@@ -49,7 +48,7 @@ class StockVCPScreener:
     cdir_path = toplevel_path + "./"  # Current dir with list of tickers
     dsel_info_name = toplevel_path + "./daily_selected_stock_info.csv"  # Output file for the daily stock statistics
     dsel_info_prefix = "selected_stock_"  # Output file for dashboard stock info tables
-    source = "yfinance"  # yfinance or stooq
+    source = "yfinance"  # default value - yfinance or stooq
 
     def __init__(self, in_sel_date: date, in_stock_list: list):
         """Constructor. Require a date and a stock list as input."""
@@ -114,8 +113,8 @@ class StockVCPScreener:
         }
 
     def check_directory(self):
-        """ Create the directories if not available. Also clean up the output dir by deleting all the pngs and jpgs in
-        the directory """
+        """Create the directories if not available. Also clean up the output dir by deleting all the pngs and jpgs in
+        the directory"""
         dir_to_check = [self.csvdatmain_name, self.output_path, self.cdir_path]
 
         for dir_name in dir_to_check:
@@ -125,7 +124,7 @@ class StockVCPScreener:
         cleanup_dir_jpg_png(self.output_path)
 
     def check_index_database(self, create=False, update=True):
-        """ Check if the index database exist. Create / Update the database """
+        """Check if the index database exist. Create / Update the database"""
         if create:
             print("Building Index CSV data")
             create_index_database(self.csvdatmain_name, self.source)
@@ -135,22 +134,25 @@ class StockVCPScreener:
             update_index_database(self.csvdatmain_name, self.source, self._date_to_study)
 
     def check_stock_database(self, source, create=False, update=True):
-        """ Check if the stock database exist. Create / Update the database """
+        """Check if the stock database exist. Create / Update the database"""
         if source == "yfinance":
             data_dir = self.csvdatmain_name
         elif source == "stooq":
             data_dir = self.csvdatstooq_name
+        else:
+            print("Invalid data source. Supported data source includes yfinance and stooq. Exiting ...")
+            sys.exit(0)
 
         if create:
             print("Building Stock CSV data")
-            create_stock_database(self._stock_list, data_dir, self.source)
+            create_stock_database(self._stock_list, data_dir, source)
 
         if update:
             print("Updating Stock CSV data")
-            update_stock_database(self._stock_list, data_dir, self.source, self._date_to_study)  # override=True
+            update_stock_database(self._stock_list, data_dir, source, self._date_to_study)  # override=True
 
     def verify_report_feasibility(self):
-        """ Check if we can compile a report of the selected date. Check if the database is updated """
+        """Check if we can compile a report of the selected date. Check if the database is updated"""
         if not os.path.exists(self.csvdatmain_name + _LAST_UPDATE_DAT_FILENAME):
             print("Cannot find the last update file. Please build the database first.")
             return False
@@ -177,6 +179,8 @@ class StockVCPScreener:
         return True
 
     def _check_preconditions(self, overwrite=False):
+        """Check if it is feasible to generate a report with the selected date. Also check if the output pdf already
+        exist, except if overwrite is set to True"""
         if not self.verify_report_feasibility():
             print("Report feasibility check failed. Exiting ...")
             sys.exit(0)
@@ -191,11 +195,8 @@ class StockVCPScreener:
             sys.exit(0)
 
     def select_stock(self, overwrite=False, writecsv=False):
-        """ Main method to perform stock selection
-        1. verify if it is feasible to generate a report with the selected date
-        2. verify if the output pdf already exist, except if overwrite is set to True
-        """
-        print(f"Working on {self._date_to_study}")
+        """Main method to perform stock selection"""
+        print(f"Selecting stock based on data from {self._date_to_study} ...")
 
         # Check if it is feasible to work on the selected date
         self._check_preconditions(overwrite=overwrite)
@@ -209,7 +210,7 @@ class StockVCPScreener:
                     df = pd.read_csv(self.csvdatmain_name + in_file_name, header=0)
                     df["Date"] = pd.to_datetime(df["Date"])
                     df.set_index("Date", inplace=True)
-                    df = df.loc[self._start_date: self._end_date]
+                    df = df.loc[self._start_date : self._end_date]
                     # df = pdr.get_data_yahoo(stock, start=start_date, end=end_date)
                 else:
                     # print(f'Cannot read csv. Skipping {stock}')
@@ -281,10 +282,11 @@ class StockVCPScreener:
                 if condit_5:
                     self._report_dict["c_50"] += 1
 
-                # Condition 6: Current Price is at least 40% above 52 week low (Many of the best are up 100-300% before coming out of consolidation)
+                # Condition 6: Current Price is at least 40% above 52-week low
+                # (Many of the best are up 100-300% before coming out of consolidation)
                 condit_6 = current_close >= (1.40 * low_of_52week)
 
-                # Condition 7: Current Price is within 25% of 52 week high
+                # Condition 7: Current Price is within 25% of 52-week high
                 condit_7 = current_close >= (0.75 * high_of_52week)
 
                 # Condition 8: Turnover is larger than 2 million
@@ -308,17 +310,17 @@ class StockVCPScreener:
                     self._report_dict["s_20_50"] += 1
 
                 if (
-                        condit_1
-                        and condit_2
-                        and condit_3
-                        and condit_4
-                        and condit_5
-                        and condit_6
-                        and condit_7
-                        and condit_8
-                        and condit_9
-                        and condit_11
-                        and condit_12
+                    condit_1
+                    and condit_2
+                    and condit_3
+                    and condit_4
+                    and condit_5
+                    and condit_6
+                    and condit_7
+                    and condit_8
+                    and condit_9
+                    and condit_11
+                    and condit_12
                 ):
                     # condit_6 and condit_7 and condit_8 and condit_9 and condit_10 and \
                     # condit_11 and condit_12:
@@ -371,47 +373,47 @@ class StockVCPScreener:
 
         for index, cols in self._selected_stock_rs_rank_sorted_df.iterrows():
             try:
-                name = cols["Stock"].strip()
+                stock_name = cols["Stock"].strip()
                 RS_rank = round(cols["RS Rank 3"], 5)
                 RS_rating = round(cols["RS Rating 3"], 5)
 
-                if (RS_rank > _RANK_CRITERIA) or (name in self._special_index_stock_list.keys()):
+                if (RS_rank > _RANK_CRITERIA) or (stock_name in self._special_index_stock_list.keys()):
                     shares = yf.Ticker(cols["Stock"])
                     hist = shares.history(start=self._start_date, end=self._end_date, interval="1d")
-                    filename = f"{str(RS_rank).ljust(7, '0')}_{name}"
-                    titlename = f"{name}   RS Rank: {str(RS_rank).ljust(7, '0')}"
-                    outpngfname = self.output_path + "/{}.png".format(filename)
-                    outjpgfname = self.output_path + "/{}.jpg".format(filename)
+                    plt_title = f"{stock_name}   RS Rank: {str(RS_rank).ljust(7, '0')}"
+                    filename = f"{str(RS_rank).ljust(7, '0')}_{stock_name}"
+                    outpng_filename = self.output_path + f"/{filename}.png"
+                    outjpg_filename = self.output_path + f"/{filename}.jpg"
                     kwargs = dict(type="candle", mav=(20, 50, 200), volume=True, figratio=(40, 23), figscale=0.95)
 
-                    stock_namelist.append(name)
-                    self._report_dict["stock_ind_list"].append(name)
+                    stock_namelist.append(stock_name)
+                    self._report_dict["stock_ind_list"].append(stock_name)
                     self._report_dict["stock_rs_rank_list"].append(RS_rank)
                     self._report_dict["stock_rs_rating_list"].append(RS_rating)
-                    print(f"{name}")
+                    print(f"{stock_name}")
 
-                if name in self._special_index_stock_list.keys():
-                    self._report_dict["index_list"].append(name)
+                if stock_name in self._special_index_stock_list.keys():
+                    self._report_dict["index_list"].append(stock_name)
                     mpf.plot(
                         hist,
                         **kwargs,
-                        style=self._special_index_stock_list[name],
-                        title=titlename,
-                        savefig=dict(fname=outpngfname, dpi=150, pad_inches=0.1),
+                        style=self._special_index_stock_list[stock_name],
+                        title=plt_title,
+                        savefig=dict(fname=outpng_filename, dpi=150, pad_inches=0.1),
                     )
-                    convert_png_to_jpg(outpngfname, outjpgfname)
+                    convert_png_to_jpg(outpng_filename, outjpg_filename)
                 elif RS_rank > _RANK_CRITERIA:
                     mpf.plot(
                         hist,
                         **kwargs,
                         style="charles",
-                        title=titlename,
-                        savefig=dict(fname=outpngfname, dpi=150, pad_inches=0.1),
+                        title=plt_title,
+                        savefig=dict(fname=outpng_filename, dpi=150, pad_inches=0.1),
                     )
-                    convert_png_to_jpg(outpngfname, outjpgfname)
+                    convert_png_to_jpg(outpng_filename, outjpg_filename)
             except Exception as e:
                 print(e)
-                print(f"Fail to generate PNG for {name}")
+                print(f"Fail to generate PNG for {stock_name}")
 
         # Generate the front page and charts, then combine them into a single pdf
         generate_report_output_page(self.output_path, self.cdir_path)
@@ -430,7 +432,7 @@ class StockVCPScreener:
         else:
             org = pd.read_csv(self.dsel_info_name)
             new = org.append(df)
-            new["Date"] = pd.to_datetime(new.Date)
+            new["Date"] = pd.to_datetime(new["Date"])
             new.set_index("Date", inplace=True)
             new = new[~new.index.duplicated(keep="last")]
             new = new.sort_index()
