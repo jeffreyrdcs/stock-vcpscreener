@@ -53,9 +53,7 @@ def cleanup_dir_jpg_png(input_dir):
     """Clean up an input directory, delete all pngs and jpgs"""
     input_dir_list = os.listdir(input_dir)
     for item in input_dir_list:
-        if item.endswith(".png"):
-            os.remove(os.path.join(input_dir, item))
-        if item.endswith(".jpg"):
+        if item.endswith(".png") or item.endswith(".jpg"):
             os.remove(os.path.join(input_dir, item))
 
 
@@ -100,8 +98,8 @@ def generate_report_output_page(input_dir, output_dir):
     """Convert the jpg charts in the input directory into a multipage PDF, then write it to an output directory"""
     jpg_list = [f for f in os.listdir(input_dir) if f.endswith(".jpg")]
 
-    if len(jpg_list) == 0:
-        print("No JPG found in input dir. Returning a blank PDF ...")
+    if not jpg_list:
+        print("No JPG found in the input dir. Generating a blank PDF ...")
         pdf = FPDF()
         pdf.add_page()
         pdf.output(output_dir + _REPORT_OUTPUT_PAGE_PDF_NAME)
@@ -136,13 +134,9 @@ def generate_report_breadth_page(in_dict, in_date, output_dir):
 
     # Text annotation
     nbreadth = (in_dict["adv"] - in_dict["decl"]) / (in_dict["adv"] + in_dict["decl"]) * 100
-    anc = AnchoredText(
-        f"{in_date}\nStocks Up:  {str(in_dict['adv'])}\nStocks Down:  {str(in_dict['decl'])}\nNet breadth: {nbreadth:.2f}%",
-        loc="upper left",
-        frameon=False,
-        pad=0.5,
-        prop=dict(size=12),
-    )
+    annotation_text = f"{in_date}\nStocks Up:  {str(in_dict['adv'])}\nStocks Down:  {str(in_dict['decl'])}\nNet breadth: {nbreadth:.2f}%"
+    anc = AnchoredText(annotation_text, loc="upper left", frameon=False, pad=0.5, prop=dict(size=12))
+
     ax = plt.gca()
     ax.add_artist(anc)
     ax.set_xlabel("% Change")
@@ -150,14 +144,20 @@ def generate_report_breadth_page(in_dict, in_date, output_dir):
     ax.set_ylabel("# of stock")
 
     fig.savefig(output_dir + _REPORT_BREADTH_PAGE_PDF_NAME, bbox_inches="tight")
+    plt.close(fig)
 
 
 def generate_combined_pdf_report(input_dir, output_dir, daily_file_name):
     """Combine the front_page, breadth_page and output_page into a single PDF"""
+    output_pdf = output_dir + str(daily_file_name) + ".pdf"
+
+    # If the output_pdf already exists, remove it
+    if os.path.isfile(output_pdf):
+        os.remove(output_pdf)
+
     front_page = input_dir + _REPORT_FRONT_PAGE_PDF_NAME
     breadth_page = input_dir + _REPORT_BREADTH_PAGE_PDF_NAME
     output_page = input_dir + _REPORT_OUTPUT_PAGE_PDF_NAME
-    output_pdf = output_dir + str(daily_file_name) + ".pdf"
 
     f_file = open(front_page, "rb")
     b_file = open(breadth_page, "rb")
@@ -167,11 +167,6 @@ def generate_combined_pdf_report(input_dir, output_dir, daily_file_name):
     comb.append(PdfFileReader(f_file, strict=False))
     comb.append(PdfFileReader(b_file, strict=False))
     comb.append(PdfFileReader(o_file, strict=False))
-
-    # If the output_pdf already exists, remove it
-    if os.path.isfile(output_pdf):
-        os.remove(output_pdf)
-
     comb.write(output_pdf)
 
     f_file.close()

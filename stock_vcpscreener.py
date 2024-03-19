@@ -18,7 +18,7 @@ from stock_vcpscreener.vcp_util.db import (
     update_index_database,
     update_stock_database,
 )
-from stock_vcpscreener.vcp_util.stat import compute_rs_rank, compute_rs_rating
+from stock_vcpscreener.vcp_util.stat import compute_rs_rank, get_rs_rank_sorted_df
 from stock_vcpscreener.vcp_util.util import (
     cleanup_dir_jpg_png,
     convert_png_to_jpg,
@@ -87,7 +87,7 @@ class StockVCPScreener:
         self._start_date = self._date_to_study - timedelta(days=365)
         self._end_date = self._date_to_study
 
-        self._selected_stock_rs_rank_list = pd.DataFrame()
+        self._selected_stock_rs_rank_sorted_df = pd.DataFrame()
 
     @staticmethod
     def _get_default_report_dict(in_sel_date: date) -> dict:
@@ -347,17 +347,16 @@ class StockVCPScreener:
             sel_stock_df = self._selected_stock_list[["Stock", "Index", "RS Rating", "RS Rating 2", "RS Rating 3"]]
 
             # Compute RS Rank
-            self._selected_stock_rs_rank_list = compute_rs_rank(sel_stock_df)
+            self._selected_stock_rs_rank_sorted_df = get_rs_rank_sorted_df(sel_stock_df)
 
             if writecsv:
                 self._selected_stock_list.to_csv(self.cdir_path + "stocks_selected.csv", mode="w")
-                self._selected_stock_rs_rank_list.to_csv(self.cdir_path + "stocks_selected_rs_stat.csv", mode="w")
+                self._selected_stock_rs_rank_sorted_df.to_csv(self.cdir_path + "stocks_selected_rs_stat.csv", mode="w")
 
             print(f"Trade day {self._date_to_study} screening completed.")
 
         except Exception as e:
-            print("Error: ")
-            print(e)
+            print(f"Error while selecting stock: {e}")
 
     def generate_report(self):
         """
@@ -370,7 +369,7 @@ class StockVCPScreener:
         stock_namelist = []
         print("Creating PNG plot for:")
 
-        for index, cols in self._selected_stock_rs_rank_list.iterrows():
+        for index, cols in self._selected_stock_rs_rank_sorted_df.iterrows():
             try:
                 name = cols["Stock"].strip()
                 RS_rank = round(cols["RS Rank 3"], 5)
@@ -462,7 +461,7 @@ class StockVCPScreener:
             ]
         )
 
-        for index, cols in self._selected_stock_rs_rank_list.iterrows():
+        for index, cols in self._selected_stock_rs_rank_sorted_df.iterrows():
             try:
                 stock_name = cols["Stock"].strip()
                 rs_rank = round(cols["RS Rank 3"], 5)
