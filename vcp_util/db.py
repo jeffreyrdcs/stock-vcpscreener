@@ -20,7 +20,7 @@ _LAST_UPDATE_DAT_FILENAME = "last_update.dat"
 
 
 def volume_check():
-    """Yfinance often gives us wrong volume that is 100x its actual value.
+    """To-do: Yfinance often gives us wrong volume that is 100x its actual value.
     Need to work out a way to cross-match the two libraries
     """
     pass
@@ -29,28 +29,29 @@ def volume_check():
 def create_index_database(index_dir_name, source, out_filename=_GSPC_SP500_CSV_FILENAME):
     """Fetch S&P500 index and save result as a csv. _GSPC_SP500_csv_filename is the default filename."""
     trade_day = get_last_trade_day()
-
     index = _get_sp500_index_ticker(source)
 
     start_date = trade_day.date() - timedelta(days=365 + 7)
     end_date = trade_day.date() + timedelta(days=1)  # +1 to include the current day
 
-    if not os.path.exists(index_dir_name + out_filename):
-        print(f"Fetching index data to {out_filename} ...")
-        try:
-            if source == "yfinance":
-                yf.pdr_override()
-                df = pdr.get_data_yahoo(index, start=start_date, end=end_date)
-            elif source == "stooq":
-                df = pdr.DataReader(index, "stooq", start=start_date, end=end_date)
-            df.to_csv(index_dir_name + out_filename)
-
-        except Exception as inst:
-            print(inst)
-    else:
+    if os.path.exists(index_dir_name + out_filename):
         print(
             f"File {out_filename} exists. Delete the file if you want to re-download the data or update index instead."
         )
+
+    print(f"Fetching index data to {out_filename} ...")
+    try:
+        df = None
+        if source == "yfinance":
+            yf.pdr_override()
+            df = pdr.get_data_yahoo(index, start=start_date, end=end_date)
+        elif source == "stooq":
+            df = pdr.DataReader(index, "stooq", start=start_date, end=end_date)
+
+        if df is not None:
+            df.to_csv(index_dir_name + out_filename)
+    except Exception as inst:
+        print(inst)
 
 
 def get_index_lastday(index_dir_name, index_filename=_GSPC_SP500_CSV_FILENAME):
@@ -122,14 +123,10 @@ def update_index_database(index_dir_name, source, trade_day, index_filename=_GSP
 
 def _get_sp500_index_ticker(source):
     """Return the ticker for the S&P500 index"""
-    if source == "yfinance":
-        index = "^GSPC"
-    elif source == "stooq":
-        index = "^SPX"  # SPX and SPY represent options on the S&P 500 index
-    else:
-        raise Exception("Please select either yfinance or stooq.")
-
-    return index
+    try:
+        return {"yfinance": "^GSPC", "stooq": "^SPX"}[source]   # SPX and SPY represent options on the S&P 500 index
+    except KeyError:
+        raise ValueError("Please select either yfinance or stooq.")
 
 
 def get_stock_filename(stock):
