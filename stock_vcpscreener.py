@@ -39,7 +39,7 @@ _LAST_UPDATE_DAT_FILENAME = "last_update.dat"
 
 
 class StockVCPScreener:
-    """Stock VCP Screener class."""
+    """Stock VCP Screener main class"""
 
     # Set up paths and directories
     toplevel_path = "stock_vcpscreener/"
@@ -52,7 +52,7 @@ class StockVCPScreener:
     source = "yfinance"  # yfinance or stooq
 
     def __init__(self, in_sel_date: date, in_stock_list: list):
-        """Constructor. Required a date and a stock list as input."""
+        """Constructor. Require a date and a stock list as input."""
         self._stock_list = in_stock_list
         self._date_to_study = in_sel_date
         print(f"The selected date is {self._date_to_study} ...")
@@ -136,30 +136,27 @@ class StockVCPScreener:
 
     def check_stock_database(self, source, create=False, update=True):
         """ Check if the stock database exist. Create / Update the database """
+        if source == "yfinance":
+            data_dir = self.csvdatmain_name
+        elif source == "stooq":
+            data_dir = self.csvdatstooq_name
+
         if create:
             print("Building Stock CSV data")
-            if source == "yfinance":
-                create_stock_database(self._stock_list, self.csvdatmain_name, self.source)
-            elif source == "stooq":
-                create_stock_database(self._stock_list, self.csvdatstooq_name, self.source)
+            create_stock_database(self._stock_list, data_dir, self.source)
 
         if update:
             print("Updating Stock CSV data")
-            if source == "yfinance":
-                update_stock_database(
-                    self._stock_list, self.csvdatmain_name, self.source, self._date_to_study
-                )  # override=True
-            elif source == "stooq":
-                update_stock_database(self._stock_list, self.csvdatstooq_name, self.source, self._date_to_study)
+            update_stock_database(self._stock_list, data_dir, self.source, self._date_to_study)  # override=True
 
     def verify_report_feasibility(self):
         """ Check if we can compile a report of the selected date. Check if the database is updated """
         if not os.path.exists(self.csvdatmain_name + _LAST_UPDATE_DAT_FILENAME):
-            print("Cannot find the last update file. Please build the database first")
+            print("Cannot find the last update file. Please build the database first.")
             return False
 
         # Read in the database update date
-        last_update = pd.read_csv(self.csvdatmain_name + "last_update.dat", header=0)
+        last_update = pd.read_csv(self.csvdatmain_name + _LAST_UPDATE_DAT_FILENAME, header=0)
         last_update["Date"] = pd.to_datetime(last_update["Date"])
         last_update_day = last_update["Date"][0]
 
@@ -174,7 +171,7 @@ class StockVCPScreener:
             return False
 
         if (index_last_update_day.date() - self._date_to_study).days < 0:
-            print("Please wait until yahoo finance update today's data.")
+            print("The index data is not up to date. Please wait until yahoo finance update today's data.")
             return False
 
         return True
@@ -467,26 +464,27 @@ class StockVCPScreener:
 
         for index, cols in self._selected_stock_rs_rank_list.iterrows():
             try:
-                name = cols["Stock"].strip()
-                RS_rank = round(cols["RS Rank 3"], 5)
-                RS_rating = round(cols["RS Rating 3"], 5)
+                stock_name = cols["Stock"].strip()
+                rs_rank = round(cols["RS Rank 3"], 5)
+                rs_rating = round(cols["RS Rating 3"], 5)
 
-                if (RS_rank > rank_criteria) or (name in self._special_index_stock_list.keys()):
+                if (rs_rank > rank_criteria) or (stock_name in self._special_index_stock_list.keys()):
                     tmp_df = get_stock_data_specific_date(
-                        self.csvdatmain_name, name, self._date_to_study, minmax_range=True, percent_change=True
+                        self.csvdatmain_name, stock_name, self._date_to_study, minmax_range=True, percent_change=True
                     )
                     if not isinstance(tmp_df, float):
-                        tmp_df["RS Rating"] = RS_rating
-                        tmp_df["RS Rank"] = RS_rank
+                        tmp_df["RS Rating"] = rs_rating
+                        tmp_df["RS Rank"] = rs_rank
                         out_df = out_df.append(tmp_df)
                     else:
-                        print(f"Fail to get stock data for {name}")
+                        print(f"Fail to get stock data for {stock_name}")
 
             except Exception as e:
-                print(f"Fail to generate Dash CSV line for {name} with Error: {e}")
+                print(f"Fail to generate Dash CSV line for {stock_name} with Error: {e}")
 
-        out_df.to_csv(self.output_path + self.dsel_info_prefix + str(self._date_to_study) + ".csv")
-        print(f"Output {self.output_path + self.dsel_info_prefix + str(self._date_to_study) + '.csv'}")
+        output_filepath = self.output_path + self.dsel_info_prefix + str(self._date_to_study) + ".csv"
+        out_df.to_csv(output_filepath)
+        print(f"Writing Dash CSV to {output_filepath} ...")
 
 
 # Start of the program
