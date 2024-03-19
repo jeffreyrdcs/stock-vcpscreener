@@ -206,16 +206,18 @@ def create_stock_database(stock_list, data_dir_name, source):
 
         print(f"Fetching {stock} info to {out_stock_filename}")
         try:
+            df = None
             if source == "yfinance":
                 yf.pdr_override()
                 df = pdr.get_data_yahoo(stock, start=start_date, end=end_date)
             elif source == "stooq":
                 df = pdr.DataReader(stock.strip(), "stooq", start=start_date, end=end_date)
 
-            if df.empty:
-                raise ValueError("Empty DataFrame retrieved.")
+            if df is not None:
+                if df.empty:
+                    raise ValueError("Empty DataFrame retrieved.")
 
-            df.to_csv(data_dir_name + out_stock_filename)
+                df.to_csv(data_dir_name + out_stock_filename)
 
         except Exception as e:
             error_file_name = data_dir_name + stock.strip().ljust(5, "_") + ".txt"
@@ -240,7 +242,6 @@ def update_stock_database(stock_list, data_dir_name, source, trade_day, override
 
     if (trade_day - last_update_day.date()).days > 0 or override:
         for stock in stock_list:
-
             # For testing
             # if stock[0:1] <'S':
             #     continue
