@@ -38,6 +38,7 @@ def create_index_database(index_dir_name, source, out_filename=_GSPC_SP500_CSV_F
         print(
             f"File {out_filename} exists. Delete the file if you want to re-download the data or update index instead."
         )
+        return
 
     print(f"Fetching index data to {out_filename} ...")
     try:
@@ -50,6 +51,7 @@ def create_index_database(index_dir_name, source, out_filename=_GSPC_SP500_CSV_F
 
         if df is not None:
             df.to_csv(index_dir_name + out_filename)
+
     except Exception as inst:
         print(inst)
 
@@ -71,54 +73,55 @@ def update_index_database(index_dir_name, source, trade_day, index_filename=_GSP
     """Read in csv for the S&P500 index, check the last updated date and update accordingly"""
     index = _get_sp500_index_ticker(source)
 
-    if os.path.exists(index_dir_name + index_filename):
-        index_df = pd.read_csv(index_dir_name + index_filename, header=0)
-        index_df["Date"] = pd.to_datetime(index_df["Date"])
-        index_df.set_index("Date", inplace=True)
-        last_avail_date = index_df.index[-1]
+    if not os.path.exists(index_dir_name + index_filename):
+        print(f"Index File {index_filename} not found!")
+        return
 
-        if (trade_day - last_avail_date.date()).days > 0:
-            print(f"Updating index data to {index_filename}")
-            try:
-                if source == "yfinance":
-                    yf.pdr_override()
-                    df = pdr.get_data_yahoo(
-                        index,
-                        start=last_avail_date.date() - timedelta(days=15),
-                        end=trade_day + timedelta(days=1),
-                    )  # Get two weeks back
-                elif source == "stooq":
-                    df = pdr.DataReader(
-                        index,
-                        "stooq",
-                        start=last_avail_date.date() - timedelta(days=15),
-                        end=trade_day + timedelta(days=1),
-                    )
-                index_df = pd.concat([index_df, df])
+    index_df = pd.read_csv(index_dir_name + index_filename, header=0)
+    index_df["Date"] = pd.to_datetime(index_df["Date"])
+    index_df.set_index("Date", inplace=True)
+    last_avail_date = index_df.index[-1]
 
-                # Check if the Volume column of the new data is identical to the one in the db
-                check = index_df.groupby(index_df.index)["Volume"].nunique().ne(1)
-                if sum(check) != 0:
-                    # Now set everything to be the minimum of the duplicated
-                    index_df["Volume"] = index_df.groupby(index_df.index)["Volume"].transform("min")
+    if (trade_day - last_avail_date.date()).days > 0:
+        print(f"Updating index data to {index_filename}")
+        try:
+            if source == "yfinance":
+                yf.pdr_override()
+                df = pdr.get_data_yahoo(
+                    index,
+                    start=last_avail_date.date() - timedelta(days=15),
+                    end=trade_day + timedelta(days=1),
+                )  # Get two weeks back
+            elif source == "stooq":
+                df = pdr.DataReader(
+                    index,
+                    "stooq",
+                    start=last_avail_date.date() - timedelta(days=15),
+                    end=trade_day + timedelta(days=1),
+                )
+            index_df = pd.concat([index_df, df])
 
-                index_df = index_df[~index_df.index.duplicated(keep="first")]
-                index_df = index_df.sort_index()
-                index_df.to_csv(index_dir_name + index_filename, mode="w")
+            # Check if the Volume column of the new data is identical to the one in the db
+            check = index_df.groupby(index_df.index)["Volume"].nunique().ne(1)
+            if sum(check) != 0:
+                # Now set everything to be the minimum of the duplicated
+                index_df["Volume"] = index_df.groupby(index_df.index)["Volume"].transform("min")
 
-                # Determine if the data is updated or not
-                updated_last_avail_date = index_df.index[-1]
-                if (trade_day - updated_last_avail_date.date()).days > 0:
-                    print(f"Last updated date of the index is {updated_last_avail_date}.")
-                    print("Please wait until yahoo finance update today's data.")
-                    sys.exit(0)
+            index_df = index_df[~index_df.index.duplicated(keep="first")]
+            index_df = index_df.sort_index()
+            index_df.to_csv(index_dir_name + index_filename, mode="w")
 
-            except Exception as inst:
-                print(f"Error updating index database: {inst}")
-        else:
-            print(f"No update needed")
+            # Determine if the data is updated or not
+            updated_last_avail_date = index_df.index[-1]
+            if (trade_day - updated_last_avail_date.date()).days > 0:
+                print(f"Last updated date of the index is {updated_last_avail_date}.")
+                print("Please wait until yahoo finance update today's data.")
+                sys.exit(0)
+
+        except Exception as inst:
+            print(f"Error updating index database: {inst}")
     else:
-        print("Index File not found!")
+        print(f"No update needed")
 
 
 def _get_sp500_index_ticker(source):
