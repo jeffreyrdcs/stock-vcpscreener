@@ -28,7 +28,7 @@ def compute_rs_rating(in_df: pd.DataFrame()) -> Tuple[float, float, float]:
     _NUM_TRADE_DAYS = 21
 
     current_close = df["Adj Close"][-1]
-    ytd_close = df["Adj Close"][-2]
+    # ytd_close = df["Adj Close"][-2]
     close_3m = df["Adj Close"][-3 * _NUM_TRADE_DAYS]
     close_6m = df["Adj Close"][-6 * _NUM_TRADE_DAYS]
     close_9m = df["Adj Close"][-9 * _NUM_TRADE_DAYS]
