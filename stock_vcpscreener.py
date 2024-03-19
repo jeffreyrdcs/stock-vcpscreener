@@ -412,8 +412,7 @@ class StockVCPScreener:
                     )
                     convert_png_to_jpg(outpng_filename, outjpg_filename)
             except Exception as e:
-                print(e)
-                print(f"Fail to generate PNG for {stock_name}")
+                print(f"Fail to generate PNG for {stock_name}. Error: {e}")
 
         # Generate the front page and charts, then combine them into a single pdf
         generate_report_output_page(self.output_path, self.cdir_path)
