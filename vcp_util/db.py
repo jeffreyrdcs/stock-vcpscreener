@@ -127,7 +127,7 @@ def update_index_database(index_dir_name, source, trade_day, index_filename=_GSP
 def _get_sp500_index_ticker(source):
     """Return the ticker for the S&P500 index"""
     try:
-        return {"yfinance": "^GSPC", "stooq": "^SPX"}[source]   # SPX and SPY represent options on the S&P 500 index
+        return {"yfinance": "^GSPC", "stooq": "^SPX"}[source]  # SPX and SPY represent options on the S&P 500 index
     except KeyError:
         raise ValueError("Please select either yfinance or stooq.")
 
@@ -165,8 +165,8 @@ def get_stock_data_specific_date(data_dir_name, stock, in_date, minmax_range=Fal
             ].iloc[-2]
 
         if minmax_range:
-            sel_df["52 Week Min"] = min(df["Adj Close"].loc[in_date - timedelta(days=365): in_date])
-            sel_df["52 Week Max"] = max(df["Adj Close"].loc[in_date - timedelta(days=365): in_date])
+            sel_df["52 Week Min"] = min(df["Adj Close"].loc[in_date - timedelta(days=365) : in_date])
+            sel_df["52 Week Max"] = max(df["Adj Close"].loc[in_date - timedelta(days=365) : in_date])
 
         # sel_df = sel_df.drop("Date")
     else:
